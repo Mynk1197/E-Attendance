@@ -7,8 +7,12 @@ function getIdToken(): string | null {
 async function call<T>(action: string, params: Record<string, string> = {}): Promise<T> {
   const idToken = getIdToken()
   if (!idToken) throw new Error('Not signed in')
-  const body = new URLSearchParams({ action, idToken, ...params })
-  const res = await fetch(APPS_SCRIPT_URL, { method: 'POST', body })
+  // Apps Script web app responses are served via a redirect to a
+  // googleusercontent.com echo URL that only accepts GET; browsers
+  // silently downgrade POST to GET (dropping the body) on that redirect,
+  // so every call here uses GET with query params instead of a POST body.
+  const query = new URLSearchParams({ action, idToken, ...params })
+  const res = await fetch(`${APPS_SCRIPT_URL}?${query.toString()}`)
   const json = await res.json()
   if (!json.ok) throw new Error(json.error || 'Request failed')
   return json.data as T
