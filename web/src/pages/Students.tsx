@@ -1,16 +1,37 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useClassSelection } from '../auth/ClassContext'
 import { api } from '../api/api'
 import { db, type CachedStudent } from '../db/db'
 
-const emptyForm = { Name: '', Surname: '', DOB: '', ScholarNo: '', Category: 'Gen', Gender: 'M', Section: '' }
+const emptyForm = { Name: '', Surname: '', DOB: '', ScholarNo: '', Category: '', Gender: '', Section: '' }
+
+const REQUIRED_FIELDS: { key: keyof typeof emptyForm; label: string }[] = [
+  { key: 'Name', label: 'Name' },
+  { key: 'Surname', label: 'Surname' },
+  { key: 'DOB', label: 'DOB' },
+  { key: 'Category', label: 'Category' },
+  { key: 'Gender', label: 'Gender' },
+]
 
 function initials(name: string, surname: string) {
   return `${name[0] ?? ''}${surname[0] ?? ''}`.toUpperCase()
 }
 
 const inputClass =
-  'rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-100'
+  'w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-100'
+const labelClass = 'mb-1 block text-xs font-medium text-gray-500'
+
+function Field({ label, required, children }: { label: string; required?: boolean; children: ReactNode }) {
+  return (
+    <div>
+      <label className={labelClass}>
+        {label}
+        {required && <span className="text-rose-500"> *</span>}
+      </label>
+      {children}
+    </div>
+  )
+}
 
 export default function Students() {
   const { klass, section, needsSection } = useClassSelection()
@@ -50,6 +71,12 @@ export default function Students() {
 
   async function submit() {
     setError('')
+    const missing = REQUIRED_FIELDS.filter((f) => !form[f.key].trim())
+    if (needsSection && !form.Section.trim()) missing.push({ key: 'Section', label: 'Section' })
+    if (missing.length > 0) {
+      setError(`Please fill in: ${missing.map((f) => f.label).join(', ')}.`)
+      return
+    }
     try {
       if (editingId) {
         await api.updateStudent(editingId, form)
@@ -88,28 +115,45 @@ export default function Students() {
       {error && <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">{error}</p>}
 
       {showForm && (
-        <div className="grid grid-cols-2 gap-2 rounded-2xl bg-white p-4 shadow-sm">
-          <input className={inputClass} placeholder="Name" value={form.Name} onChange={(e) => setForm({ ...form, Name: e.target.value })} />
-          <input className={inputClass} placeholder="Surname" value={form.Surname} onChange={(e) => setForm({ ...form, Surname: e.target.value })} />
-          <input className={inputClass} type="date" placeholder="DOB" value={form.DOB} onChange={(e) => setForm({ ...form, DOB: e.target.value })} />
-          <input className={inputClass} placeholder="Scholar No." value={form.ScholarNo} onChange={(e) => setForm({ ...form, ScholarNo: e.target.value })} />
-          <select className={inputClass} value={form.Category} onChange={(e) => setForm({ ...form, Category: e.target.value })}>
-            <option>Gen</option>
-            <option>OBC</option>
-            <option>SC</option>
-            <option>ST</option>
-          </select>
-          <select className={inputClass} value={form.Gender} onChange={(e) => setForm({ ...form, Gender: e.target.value })}>
-            <option value="M">Boy</option>
-            <option value="F">Girl</option>
-          </select>
+        <div className="grid grid-cols-2 gap-3 rounded-2xl bg-white p-4 shadow-sm">
+          <Field label="Name" required>
+            <input className={inputClass} value={form.Name} onChange={(e) => setForm({ ...form, Name: e.target.value })} />
+          </Field>
+          <Field label="Surname" required>
+            <input className={inputClass} value={form.Surname} onChange={(e) => setForm({ ...form, Surname: e.target.value })} />
+          </Field>
+          <Field label="DOB" required>
+            <input className={inputClass} type="date" value={form.DOB} onChange={(e) => setForm({ ...form, DOB: e.target.value })} />
+          </Field>
+          <Field label="Roll No.">
+            <input className={inputClass} value={form.ScholarNo} onChange={(e) => setForm({ ...form, ScholarNo: e.target.value })} />
+          </Field>
+          <Field label="Category" required>
+            <select className={inputClass} value={form.Category} onChange={(e) => setForm({ ...form, Category: e.target.value })}>
+              <option value="" disabled>
+                Select category
+              </option>
+              <option value="General">General</option>
+              <option value="OBC">OBC</option>
+              <option value="SC">SC</option>
+              <option value="ST">ST</option>
+            </select>
+          </Field>
+          <Field label="Gender" required>
+            <select className={inputClass} value={form.Gender} onChange={(e) => setForm({ ...form, Gender: e.target.value })}>
+              <option value="" disabled>
+                Select gender
+              </option>
+              <option value="M">Boy</option>
+              <option value="F">Girl</option>
+            </select>
+          </Field>
           {needsSection && (
-            <input
-              className={`${inputClass} col-span-2`}
-              placeholder="Section (e.g. A)"
-              value={form.Section}
-              onChange={(e) => setForm({ ...form, Section: e.target.value })}
-            />
+            <div className="col-span-2">
+              <Field label="Section (e.g. A)" required>
+                <input className={inputClass} value={form.Section} onChange={(e) => setForm({ ...form, Section: e.target.value })} />
+              </Field>
+            </div>
           )}
           <button onClick={submit} className="col-span-2 mt-1 rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white">
             {editingId ? 'Update student' : 'Add student'}
