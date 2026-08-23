@@ -39,6 +39,7 @@ export default function Students() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [showForm, setShowForm] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     if (klass) load()
@@ -76,6 +77,7 @@ export default function Students() {
       setError(`Please fill in: ${missing.map((f) => f.label).join(', ')}.`)
       return
     }
+    setSubmitting(true)
     try {
       if (editingId) {
         await api.updateStudent(editingId, form)
@@ -86,6 +88,8 @@ export default function Students() {
       await load()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed. Are you online?')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -114,7 +118,7 @@ export default function Students() {
       {error && <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">{error}</p>}
 
       {showForm && (
-        <div className="grid grid-cols-2 gap-3 rounded-2xl bg-white p-4 shadow-sm">
+        <fieldset disabled={submitting} className="grid grid-cols-2 gap-3 rounded-2xl bg-white p-4 shadow-sm disabled:opacity-60">
           <Field label="Name" required>
             <input className={inputClass} value={form.Name} onChange={(e) => setForm({ ...form, Name: e.target.value })} />
           </Field>
@@ -154,10 +158,15 @@ export default function Students() {
               </Field>
             </div>
           )}
-          <button onClick={submit} className="col-span-2 mt-1 rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white">
-            {editingId ? 'Update student' : 'Add student'}
+          <button
+            onClick={submit}
+            disabled={submitting}
+            className="col-span-2 mt-1 flex items-center justify-center gap-2 rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white disabled:opacity-70"
+          >
+            {submitting && <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />}
+            {submitting ? 'Saving…' : editingId ? 'Update student' : 'Add student'}
           </button>
-        </div>
+        </fieldset>
       )}
 
       <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
