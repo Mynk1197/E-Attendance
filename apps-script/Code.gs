@@ -238,26 +238,25 @@ function saveAttendance(params, teacher) {
   var klass = params.class;
   var section = params.section || '';
   var records = JSON.parse(params.records); // [{studentId, present: 'Y'|'N'|'H'}]
+
+  var isHoliday = sheetToObjects(SHEET_HOLIDAYS, HOLIDAYS_HEADERS).some(function (h) {
+    return String(h.Date) === String(date) && (String(h.Class) === String(klass) || String(h.Class) === 'ALL');
+  });
+  if (isHoliday) {
+    throw new Error('This day is marked as a holiday. Attendance cannot be recorded for it.');
+  }
+
+  var alreadySaved = sheetToObjects(SHEET_ATTENDANCE, ATTENDANCE_HEADERS).some(function (a) {
+    return String(a.Date) === String(date) && String(a.Class) === String(klass) && (!section || String(a.Section) === String(section));
+  });
+  if (alreadySaved) {
+    throw new Error('Attendance for this date is already saved and cannot be changed.');
+  }
+
   var now = new Date().toISOString();
   var sh = getSheet(SHEET_ATTENDANCE);
-  var lastRow = sh.getLastRow();
-  var existing = {};
-  if (lastRow >= 2) {
-    var values = sh.getRange(2, 1, lastRow - 1, ATTENDANCE_HEADERS.length).getValues();
-    for (var i = 0; i < values.length; i++) {
-      if (String(values[i][0]) === date && String(values[i][3])) {
-        existing[values[i][3]] = i + 2;
-      }
-    }
-  }
   records.forEach(function (r) {
-    var rowVals = [date, klass, section, r.studentId, r.present, teacher.email, now];
-    var rowIdx = existing[r.studentId];
-    if (rowIdx) {
-      sh.getRange(rowIdx, 1, 1, ATTENDANCE_HEADERS.length).setValues([rowVals]);
-    } else {
-      sh.appendRow(rowVals);
-    }
+    sh.appendRow([date, klass, section, r.studentId, r.present, teacher.email, now]);
   });
   return { saved: records.length };
 }

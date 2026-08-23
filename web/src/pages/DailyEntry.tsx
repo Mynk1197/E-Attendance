@@ -13,6 +13,18 @@ function initials(name: string, surname: string) {
   return `${name[0] ?? ''}${surname[0] ?? ''}`.toUpperCase()
 }
 
+interface Holiday {
+  Date: string
+  Class: string
+  Remark: string
+}
+
+interface AttendanceRecord {
+  Date: string
+  StudentID: string
+  Present: 'Y' | 'N' | 'H'
+}
+
 export default function DailyEntry() {
   const { klass, section } = useClassSelection()
   const [date, setDate] = useState(todayStr())
@@ -20,6 +32,8 @@ export default function DailyEntry() {
   const [marks, setMarks] = useState<Record<string, 'Y' | 'N'>>({})
   const [holidayRemark, setHolidayRemark] = useState('')
   const [markAsHoliday, setMarkAsHoliday] = useState(false)
+  const [lockedHoliday, setLockedHoliday] = useState<string | null>(null)
+  const [alreadySaved, setAlreadySaved] = useState(false)
   const [saving, setSaving] = useState(false)
   const [status, setStatus] = useState('')
 
@@ -29,9 +43,44 @@ export default function DailyEntry() {
   }, [klass, section])
 
   useEffect(() => {
+    if (!klass) return
+    setStatus('')
+    checkDateState()
+  }, [klass, section, date])
+
+  async function checkDateState() {
     setMarkAsHoliday(isSunday(date))
     setHolidayRemark(isSunday(date) ? 'Sunday' : '')
-  }, [date])
+    setLockedHoliday(null)
+    setAlreadySaved(false)
+
+    try {
+      const holidays = (await api.getHolidays(klass, date, date)) as Holiday[]
+      const holiday = holidays.find((h) => h.Date === date)
+      if (holiday) {
+        setLockedHoliday(holiday.Remark)
+        setMarkAsHoliday(true)
+        setHolidayRemark(holiday.Remark)
+        return
+      }
+    } catch {
+      // offline: fall back to Sunday-only detection
+    }
+
+    try {
+      const existing = (await api.getAttendance(klass, section, date)) as AttendanceRecord[]
+      if (existing.length > 0) {
+        setAlreadySaved(true)
+        const existingMarks: Record<string, 'Y' | 'N'> = {}
+        existing.forEach((r) => {
+          if (r.Present === 'Y' || r.Present === 'N') existingMarks[r.StudentID] = r.Present
+        })
+        setMarks(existingMarks)
+      }
+    } catch {
+      // offline: cannot verify, allow entry
+    }
+  }
 
   async function loadStudents() {
     const cached = await db.students.where('Class').equals(klass).toArray()
@@ -48,11 +97,13 @@ export default function DailyEntry() {
     }
   }
 
-  function toggle(studentId: string) {
-    setMarks((m) => ({ ...m, [studentId]: m[studentId] === 'Y' ? 'N' : 'Y' }))
+  function setMark(studentId: string, present: 'Y' | 'N') {
+    if (alreadySaved || lockedHoliday) return
+    setMarks((m) => ({ ...m, [studentId]: present }))
   }
 
   async function save() {
+    if (alreadySaved || lockedHoliday) return
     setSaving(true)
     setStatus('')
     const records = markAsHoliday
@@ -62,6 +113,7 @@ export default function DailyEntry() {
     await db.attendanceQueue.add({ class: klass, section, date, records, createdAt: new Date().toISOString() })
     const result = await flushQueue()
     setSaving(false)
+    setAlreadySaved(true)
     setStatus(result.synced > 0 ? 'Saved and synced.' : 'Saved locally, will sync when online.')
   }
 
@@ -69,6 +121,7 @@ export default function DailyEntry() {
   const girls = students.filter((s) => s.Gender === 'F')
   const presentCount = Object.values(marks).filter((v) => v === 'Y').length
   const absentCount = students.length - presentCount
+  const locked = alreadySaved || !!lockedHoliday
 
   return (
     <div className="mx-auto max-w-md space-y-4 p-4">
@@ -82,21 +135,37 @@ export default function DailyEntry() {
         />
       </div>
 
-      <label className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm">
-        <input
-          type="checkbox"
-          checked={markAsHoliday}
-          onChange={(e) => setMarkAsHoliday(e.target.checked)}
-          className="h-5 w-5 rounded accent-indigo-600"
-        />
-        <span className="text-sm font-medium text-gray-700">Mark whole day as holiday</span>
-      </label>
+      {lockedHoliday && (
+        <div className="rounded-2xl bg-amber-50 p-4 text-sm font-medium text-amber-700 shadow-sm">
+          This day is marked as a holiday: {lockedHoliday}. Attendance can't be recorded for it.
+        </div>
+      )}
 
-      {markAsHoliday && (
+      {alreadySaved && !lockedHoliday && (
+        <div className="rounded-2xl bg-indigo-50 p-4 text-sm font-medium text-indigo-700 shadow-sm">
+          Attendance for this date is already saved and can't be changed here.
+        </div>
+      )}
+
+      {!lockedHoliday && (
+        <label className={`flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm ${locked ? 'opacity-60' : ''}`}>
+          <input
+            type="checkbox"
+            checked={markAsHoliday}
+            disabled={locked}
+            onChange={(e) => setMarkAsHoliday(e.target.checked)}
+            className="h-5 w-5 rounded accent-indigo-600"
+          />
+          <span className="text-sm font-medium text-gray-700">Mark whole day as holiday</span>
+        </label>
+      )}
+
+      {markAsHoliday && !lockedHoliday && (
         <input
-          className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm outline-none focus:border-indigo-400"
+          className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm outline-none focus:border-indigo-400 disabled:opacity-60"
           placeholder="Remark (e.g. Public holiday)"
           value={holidayRemark}
+          disabled={locked}
           onChange={(e) => setHolidayRemark(e.target.value)}
         />
       )}
@@ -122,19 +191,26 @@ export default function DailyEntry() {
                     <span className="flex-1 truncate text-sm font-medium text-gray-800">
                       {s.Name} {s.Surname}
                     </span>
-                    <button
-                      onClick={() => toggle(s.StudentID)}
-                      aria-pressed={present}
-                      className={`relative h-7 w-14 shrink-0 rounded-full transition-colors ${
-                        present ? 'bg-emerald-500' : 'bg-gray-300'
-                      }`}
-                    >
-                      <span
-                        className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
-                          present ? 'translate-x-7' : 'translate-x-0.5'
+                    <div className="flex shrink-0 overflow-hidden rounded-full border border-gray-200">
+                      <button
+                        onClick={() => setMark(s.StudentID, 'Y')}
+                        disabled={locked}
+                        className={`px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed ${
+                          present ? 'bg-emerald-500 text-white' : 'bg-white text-gray-400'
                         }`}
-                      />
-                    </button>
+                      >
+                        Present
+                      </button>
+                      <button
+                        onClick={() => setMark(s.StudentID, 'N')}
+                        disabled={locked}
+                        className={`px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed ${
+                          !present ? 'bg-rose-500 text-white' : 'bg-white text-gray-400'
+                        }`}
+                      >
+                        Absent
+                      </button>
+                    </div>
                   </li>
                 )
               })}
@@ -144,13 +220,15 @@ export default function DailyEntry() {
         </>
       )}
 
-      <button
-        onClick={save}
-        disabled={saving}
-        className="w-full rounded-2xl bg-indigo-600 py-3.5 text-sm font-semibold text-white shadow-md shadow-indigo-200 transition active:scale-[0.99] disabled:opacity-50"
-      >
-        {saving ? 'Saving…' : 'Save Attendance'}
-      </button>
+      {!locked && (
+        <button
+          onClick={save}
+          disabled={saving}
+          className="w-full rounded-2xl bg-indigo-600 py-3.5 text-sm font-semibold text-white shadow-md shadow-indigo-200 transition active:scale-[0.99] disabled:opacity-50"
+        >
+          {saving ? 'Saving…' : 'Save Attendance'}
+        </button>
+      )}
       {status && <p className="text-center text-xs font-medium text-gray-500">{status}</p>}
     </div>
   )
