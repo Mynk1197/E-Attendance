@@ -173,6 +173,7 @@ function addStudent(params) {
   s.StudentID = 'S' + new Date().getTime() + Math.floor(Math.random() * 1000);
   s.Active = 'Y';
   appendRow(SHEET_STUDENTS, STUDENTS_HEADERS, s);
+  forceDOBAsText(findRowIndexByKey(SHEET_STUDENTS, STUDENTS_HEADERS, 'StudentID', s.StudentID), s.DOB);
   return { studentId: s.StudentID };
 }
 
@@ -184,7 +185,39 @@ function updateStudent(params) {
   STUDENTS_HEADERS.forEach(function (h, i) {
     if (fields[h] !== undefined) sh.getRange(rowIdx, i + 1).setValue(fields[h]);
   });
+  if (fields.DOB !== undefined) forceDOBAsText(rowIdx, fields.DOB);
   return { ok: true };
+}
+
+// Sheets auto-converts a "yyyy-MM-dd"-looking value into a real Date/
+// datetime cell, which breaks the <input type="date"> round-trip. Setting
+// the cell's number format to plain text ("@") before writing keeps DOB
+// stored exactly as the yyyy-MM-dd string the app sent.
+function forceDOBAsText(rowIdx, dobValue) {
+  if (rowIdx < 0 || !dobValue) return;
+  var sh = getSheet(SHEET_STUDENTS);
+  var col = STUDENTS_HEADERS.indexOf('DOB') + 1;
+  var cell = sh.getRange(rowIdx, col);
+  cell.setNumberFormat('@');
+  cell.setValue(String(dobValue));
+}
+
+// One-time repair: run manually from the Apps Script editor if existing
+// DOB values were saved before forceDOBAsText was added and are showing
+// as blank/garbled on edit.
+function normalizeDOBColumn() {
+  var sh = getSheet(SHEET_STUDENTS);
+  var lastRow = sh.getLastRow();
+  if (lastRow < 2) return;
+  var col = STUDENTS_HEADERS.indexOf('DOB') + 1;
+  var range = sh.getRange(2, col, lastRow - 1, 1);
+  var values = range.getValues();
+  range.setNumberFormat('@');
+  var fixed = values.map(function (row) {
+    var cell = row[0];
+    return [cell instanceof Date ? Utilities.formatDate(cell, 'Asia/Kolkata', 'yyyy-MM-dd') : String(cell)];
+  });
+  range.setValues(fixed);
 }
 
 function deleteStudent(params) {
