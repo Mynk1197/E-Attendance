@@ -35,6 +35,7 @@ export default function DailyEntry() {
   const [lockedHoliday, setLockedHoliday] = useState<string | null>(null)
   const [alreadySaved, setAlreadySaved] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [checkingDate, setCheckingDate] = useState(false)
   const [status, setStatus] = useState('')
 
   useEffect(() => {
@@ -49,36 +50,48 @@ export default function DailyEntry() {
   }, [klass, section, date])
 
   async function checkDateState() {
+    setCheckingDate(true)
     setMarkAsHoliday(isSunday(date))
     setHolidayRemark(isSunday(date) ? 'Sunday' : '')
     setLockedHoliday(null)
     setAlreadySaved(false)
+    // Reset to defaults first so a previous date's marks never carry over
+    // onto a newly selected date before that date's own data is known.
+    const defaults: Record<string, 'Y' | 'N'> = {}
+    students.forEach((s) => (defaults[s.StudentID] = 'Y'))
+    setMarks(defaults)
 
     try {
-      const holidays = (await api.getHolidays(klass, date, date)) as Holiday[]
-      const holiday = holidays.find((h) => h.Date === date)
-      if (holiday) {
-        setLockedHoliday(holiday.Remark)
-        setMarkAsHoliday(true)
-        setHolidayRemark(holiday.Remark)
-        return
+      let holidayFound = false
+      try {
+        const holidays = (await api.getHolidays(klass, date, date)) as Holiday[]
+        const holiday = holidays.find((h) => h.Date === date)
+        if (holiday) {
+          holidayFound = true
+          setLockedHoliday(holiday.Remark)
+          setMarkAsHoliday(true)
+          setHolidayRemark(holiday.Remark)
+        }
+      } catch {
+        // offline: fall back to Sunday-only detection
       }
-    } catch {
-      // offline: fall back to Sunday-only detection
-    }
+      if (holidayFound) return
 
-    try {
-      const existing = (await api.getAttendance(klass, section, date)) as AttendanceRecord[]
-      if (existing.length > 0) {
-        setAlreadySaved(true)
-        const existingMarks: Record<string, 'Y' | 'N'> = {}
-        existing.forEach((r) => {
-          if (r.Present === 'Y' || r.Present === 'N') existingMarks[r.StudentID] = r.Present
-        })
-        setMarks(existingMarks)
+      try {
+        const existing = (await api.getAttendance(klass, section, date)) as AttendanceRecord[]
+        if (existing.length > 0) {
+          setAlreadySaved(true)
+          const existingMarks: Record<string, 'Y' | 'N'> = {}
+          existing.forEach((r) => {
+            if (r.Present === 'Y' || r.Present === 'N') existingMarks[r.StudentID] = r.Present
+          })
+          setMarks(existingMarks)
+        }
+      } catch {
+        // offline: cannot verify, allow entry
       }
-    } catch {
-      // offline: cannot verify, allow entry
+    } finally {
+      setCheckingDate(false)
     }
   }
 
@@ -126,7 +139,10 @@ export default function DailyEntry() {
   return (
     <div className="mx-auto max-w-md space-y-4 p-4">
       <div className="flex items-center justify-between rounded-2xl bg-white p-3 shadow-sm">
-        <span className="text-sm font-medium text-gray-500">Attendance for</span>
+        <span className="flex items-center gap-2 text-sm font-medium text-gray-500">
+          Attendance for
+          {checkingDate && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />}
+        </span>
         <input
           type="date"
           className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-semibold text-gray-800"
@@ -135,101 +151,109 @@ export default function DailyEntry() {
         />
       </div>
 
-      {lockedHoliday && (
-        <div className="rounded-2xl bg-amber-50 p-4 text-sm font-medium text-amber-700 shadow-sm">
-          This day is marked as a holiday: {lockedHoliday}. Attendance can't be recorded for it.
-        </div>
+      {checkingDate && (
+        <div className="rounded-2xl bg-white p-4 text-center text-sm text-gray-400 shadow-sm">Checking this date…</div>
       )}
 
-      {alreadySaved && !lockedHoliday && (
-        <div className="rounded-2xl bg-indigo-50 p-4 text-sm font-medium text-indigo-700 shadow-sm">
-          Attendance for this date is already saved and can't be changed here.
-        </div>
-      )}
-
-      {!lockedHoliday && (
-        <label className={`flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm ${locked ? 'opacity-60' : ''}`}>
-          <input
-            type="checkbox"
-            checked={markAsHoliday}
-            disabled={locked}
-            onChange={(e) => setMarkAsHoliday(e.target.checked)}
-            className="h-5 w-5 rounded accent-indigo-600"
-          />
-          <span className="text-sm font-medium text-gray-700">Mark whole day as holiday</span>
-        </label>
-      )}
-
-      {markAsHoliday && !lockedHoliday && (
-        <input
-          className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm outline-none focus:border-indigo-400 disabled:opacity-60"
-          placeholder="Remark (e.g. Public holiday)"
-          value={holidayRemark}
-          disabled={locked}
-          onChange={(e) => setHolidayRemark(e.target.value)}
-        />
-      )}
-
-      {!markAsHoliday && (
+      {!checkingDate && (
         <>
-          <div className="grid grid-cols-4 gap-2">
-            <StatChip label="Strength" value={students.length} color="bg-indigo-50 text-indigo-700" />
-            <StatChip label="Present" value={presentCount} color="bg-emerald-50 text-emerald-700" />
-            <StatChip label="Absent" value={absentCount} color="bg-rose-50 text-rose-700" />
-            <StatChip label="Boys/Girls" value={`${boys.length}/${girls.length}`} color="bg-amber-50 text-amber-700" />
-          </div>
+          {lockedHoliday && (
+            <div className="rounded-2xl bg-amber-50 p-4 text-sm font-medium text-amber-700 shadow-sm">
+              This day is marked as a holiday: {lockedHoliday}. Attendance can't be recorded for it.
+            </div>
+          )}
 
-          <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
-            <ul className="divide-y divide-gray-100">
-              {students.map((s) => {
-                const present = marks[s.StudentID] !== 'N'
-                return (
-                  <li key={s.StudentID} className="flex items-center gap-3 px-4 py-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700">
-                      {initials(s.Name, s.Surname)}
-                    </div>
-                    <span className="flex-1 truncate text-sm font-medium text-gray-800">
-                      {s.Name} {s.Surname}
-                    </span>
-                    <div className="flex shrink-0 overflow-hidden rounded-full border border-gray-200">
-                      <button
-                        onClick={() => setMark(s.StudentID, 'Y')}
-                        disabled={locked}
-                        className={`px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed ${
-                          present ? 'bg-emerald-500 text-white' : 'bg-white text-gray-400'
-                        }`}
-                      >
-                        Present
-                      </button>
-                      <button
-                        onClick={() => setMark(s.StudentID, 'N')}
-                        disabled={locked}
-                        className={`px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed ${
-                          !present ? 'bg-rose-500 text-white' : 'bg-white text-gray-400'
-                        }`}
-                      >
-                        Absent
-                      </button>
-                    </div>
-                  </li>
-                )
-              })}
-              {students.length === 0 && <li className="px-4 py-6 text-center text-sm text-gray-400">No students found.</li>}
-            </ul>
-          </div>
+          {alreadySaved && !lockedHoliday && (
+            <div className="rounded-2xl bg-indigo-50 p-4 text-sm font-medium text-indigo-700 shadow-sm">
+              Attendance for this date is already saved and can't be changed here.
+            </div>
+          )}
+
+          {!lockedHoliday && (
+            <label className={`flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm ${locked ? 'opacity-60' : ''}`}>
+              <input
+                type="checkbox"
+                checked={markAsHoliday}
+                disabled={locked}
+                onChange={(e) => setMarkAsHoliday(e.target.checked)}
+                className="h-5 w-5 rounded accent-indigo-600"
+              />
+              <span className="text-sm font-medium text-gray-700">Mark whole day as holiday</span>
+            </label>
+          )}
+
+          {markAsHoliday && !lockedHoliday && (
+            <input
+              className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm outline-none focus:border-indigo-400 disabled:opacity-60"
+              placeholder="Remark (e.g. Public holiday)"
+              value={holidayRemark}
+              disabled={locked}
+              onChange={(e) => setHolidayRemark(e.target.value)}
+            />
+          )}
+
+          {!markAsHoliday && (
+            <>
+              <div className="grid grid-cols-4 gap-2">
+                <StatChip label="Strength" value={students.length} color="bg-indigo-50 text-indigo-700" />
+                <StatChip label="Present" value={presentCount} color="bg-emerald-50 text-emerald-700" />
+                <StatChip label="Absent" value={absentCount} color="bg-rose-50 text-rose-700" />
+                <StatChip label="Boys/Girls" value={`${boys.length}/${girls.length}`} color="bg-amber-50 text-amber-700" />
+              </div>
+
+              <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
+                <ul className="divide-y divide-gray-100">
+                  {students.map((s) => {
+                    const present = marks[s.StudentID] !== 'N'
+                    return (
+                      <li key={s.StudentID} className="flex items-center gap-3 px-4 py-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700">
+                          {initials(s.Name, s.Surname)}
+                        </div>
+                        <span className="flex-1 truncate text-sm font-medium text-gray-800">
+                          {s.Name} {s.Surname}
+                        </span>
+                        <div className="flex shrink-0 overflow-hidden rounded-full border border-gray-200">
+                          <button
+                            onClick={() => setMark(s.StudentID, 'Y')}
+                            disabled={locked}
+                            className={`px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed ${
+                              present ? 'bg-emerald-500 text-white' : 'bg-white text-gray-400'
+                            }`}
+                          >
+                            Present
+                          </button>
+                          <button
+                            onClick={() => setMark(s.StudentID, 'N')}
+                            disabled={locked}
+                            className={`px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed ${
+                              !present ? 'bg-rose-500 text-white' : 'bg-white text-gray-400'
+                            }`}
+                          >
+                            Absent
+                          </button>
+                        </div>
+                      </li>
+                    )
+                  })}
+                  {students.length === 0 && <li className="px-4 py-6 text-center text-sm text-gray-400">No students found.</li>}
+                </ul>
+              </div>
+            </>
+          )}
+
+          {!locked && (
+            <button
+              onClick={save}
+              disabled={saving}
+              className="w-full rounded-2xl bg-indigo-600 py-3.5 text-sm font-semibold text-white shadow-md shadow-indigo-200 transition active:scale-[0.99] disabled:opacity-50"
+            >
+              {saving ? 'Saving…' : 'Save Attendance'}
+            </button>
+          )}
+          {status && <p className="text-center text-xs font-medium text-gray-500">{status}</p>}
         </>
       )}
-
-      {!locked && (
-        <button
-          onClick={save}
-          disabled={saving}
-          className="w-full rounded-2xl bg-indigo-600 py-3.5 text-sm font-semibold text-white shadow-md shadow-indigo-200 transition active:scale-[0.99] disabled:opacity-50"
-        >
-          {saving ? 'Saving…' : 'Save Attendance'}
-        </button>
-      )}
-      {status && <p className="text-center text-xs font-medium text-gray-500">{status}</p>}
     </div>
   )
 }
