@@ -35,6 +35,10 @@ function todayStr() {
   return new Date().toISOString().slice(0, 10)
 }
 
+function formatDateLabel(ds: string) {
+  return new Date(ds + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })
+}
+
 export default function Report({ period }: { period: 'weekly' | 'monthly' }) {
   const { klass, section } = useClassSelection()
   const [date, setDate] = useState(todayStr())
@@ -65,72 +69,88 @@ export default function Report({ period }: { period: 'weekly' | 'monthly' }) {
   }
 
   return (
-    <div className="mx-auto max-w-2xl p-4">
-      <div className="mb-4 flex items-center gap-3">
-        <label className="text-sm text-gray-600">{period === 'weekly' ? 'Any day in week' : 'Any day in month'}</label>
-        <input type="date" className="rounded border px-2 py-1" value={date} onChange={(e) => setDate(e.target.value)} />
+    <div className="mx-auto max-w-md space-y-4 p-4">
+      <div className="flex items-center justify-between rounded-2xl bg-white p-3 shadow-sm">
+        <span className="text-sm font-medium text-gray-500">{period === 'weekly' ? 'Any day in week' : 'Any day in month'}</span>
+        <input
+          type="date"
+          className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-semibold text-gray-800"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+        />
       </div>
 
-      {!report && <p className="text-sm text-gray-500">No data yet{navigator.onLine ? '' : ' (offline)'}.</p>}
+      {!report && (
+        <div className="rounded-2xl bg-white p-6 text-center text-sm text-gray-400 shadow-sm">
+          No data yet{navigator.onLine ? '' : ' (offline)'}.
+        </div>
+      )}
 
       {report && (
         <>
-          <div className="mb-4 grid grid-cols-2 gap-3 text-sm">
-            <Stat label="Total strength" value={report.totals.totalStrength} />
-            <Stat label="Days counted" value={report.totals.daysCounted} />
-            <Stat label="Boys present (sum)" value={report.totals.boysPresent} />
-            <Stat label="Girls present (sum)" value={report.totals.girlsPresent} />
-            <Stat label="Total present (sum)" value={report.totals.totalPresent} />
-            <Stat label="Total absent (sum)" value={report.totals.totalAbsent} />
-            <Stat label="SC present" value={report.totals.scPresent} />
-            <Stat label="ST present" value={report.totals.stPresent} />
-            <Stat label="OBC present" value={report.totals.obcPresent} />
-            <Stat label="Gen present" value={report.totals.genPresent} />
+          <div className="grid grid-cols-2 gap-2">
+            <Stat label="Total strength" value={report.totals.totalStrength} accent="text-indigo-600" />
+            <Stat label="Days counted" value={report.totals.daysCounted} accent="text-gray-700" />
+            <Stat label="Boys present" value={report.totals.boysPresent} accent="text-sky-600" />
+            <Stat label="Girls present" value={report.totals.girlsPresent} accent="text-pink-600" />
+            <Stat label="Total present" value={report.totals.totalPresent} accent="text-emerald-600" />
+            <Stat label="Total absent" value={report.totals.totalAbsent} accent="text-rose-600" />
           </div>
 
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b text-gray-500">
-                <th className="py-1">Date</th>
-                <th>Boys</th>
-                <th>Girls</th>
-                <th>Present</th>
-                <th>Absent</th>
-              </tr>
-            </thead>
-            <tbody>
-              {report.days.map((d) => (
-                <tr key={d.date} className="border-b">
-                  <td className="py-1">{d.date}</td>
-                  {d.holiday ? (
-                    <td colSpan={4} className="text-gray-500">
-                      Holiday{d.remark ? `: ${d.remark}` : ''}
-                    </td>
-                  ) : (
-                    <>
-                      <td>{d.boysPresent}</td>
-                      <td>{d.girlsPresent}</td>
-                      <td>{d.totalPresent}</td>
-                      <td>{d.totalAbsent}</td>
-                    </>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="rounded-2xl bg-white p-4 shadow-sm">
+            <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-gray-400">Category-wise present</h3>
+            <div className="grid grid-cols-4 gap-2 text-center">
+              <CategoryPill label="SC" value={report.totals.scPresent} />
+              <CategoryPill label="ST" value={report.totals.stPresent} />
+              <CategoryPill label="OBC" value={report.totals.obcPresent} />
+              <CategoryPill label="Gen" value={report.totals.genPresent} />
+            </div>
+          </div>
 
-          {lastSynced && <p className="mt-3 text-xs text-gray-400">Last synced: {new Date(lastSynced).toLocaleString()}</p>}
+          <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
+            <h3 className="border-b border-gray-100 px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-400">
+              Day-by-day
+            </h3>
+            <ul className="divide-y divide-gray-100">
+              {report.days.map((d) => (
+                <li key={d.date} className="flex items-center justify-between px-4 py-2.5 text-sm">
+                  <span className="font-medium text-gray-700">{formatDateLabel(d.date)}</span>
+                  {d.holiday ? (
+                    <span className="text-xs font-medium text-amber-600">{d.remark ?? 'Holiday'}</span>
+                  ) : (
+                    <span className="flex gap-3 text-xs text-gray-500">
+                      <span className="font-semibold text-emerald-600">P {d.totalPresent}</span>
+                      <span className="font-semibold text-rose-600">A {d.totalAbsent}</span>
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {lastSynced && (
+            <p className="text-center text-xs text-gray-400">Last synced: {new Date(lastSynced).toLocaleString()}</p>
+          )}
         </>
       )}
     </div>
   )
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
+function Stat({ label, value, accent }: { label: string; value: number; accent: string }) {
   return (
-    <div className="rounded border p-2">
-      <div className="text-gray-500">{label}</div>
-      <div className="text-lg font-semibold">{value}</div>
+    <div className="rounded-2xl bg-white p-3.5 shadow-sm">
+      <div className={`text-xl font-bold ${accent}`}>{value}</div>
+      <div className="text-xs font-medium text-gray-400">{label}</div>
+    </div>
+  )
+}
+
+function CategoryPill({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-xl bg-gray-50 py-2">
+      <div className="text-base font-bold text-gray-800">{value}</div>
+      <div className="text-[10px] font-medium text-gray-400">{label}</div>
     </div>
   )
 }

@@ -12,6 +12,10 @@ function isSunday(dateStr: string) {
   return new Date(dateStr + 'T00:00:00').getDay() === 0
 }
 
+function initials(name: string, surname: string) {
+  return `${name[0] ?? ''}${surname[0] ?? ''}`.toUpperCase()
+}
+
 export default function DailyEntry() {
   const { klass, section } = useClassSelection()
   const [date, setDate] = useState(todayStr())
@@ -67,52 +71,78 @@ export default function DailyEntry() {
   const boys = students.filter((s) => s.Gender === 'M')
   const girls = students.filter((s) => s.Gender === 'F')
   const presentCount = Object.values(marks).filter((v) => v === 'Y').length
+  const absentCount = students.length - presentCount
 
   return (
-    <div className="mx-auto max-w-2xl p-4">
-      <div className="mb-4 flex items-center gap-3">
-        <label className="text-sm text-gray-600">Date</label>
-        <input type="date" className="rounded border px-2 py-1" value={date} onChange={(e) => setDate(e.target.value)} />
+    <div className="mx-auto max-w-md space-y-4 p-4">
+      <div className="flex items-center justify-between rounded-2xl bg-white p-3 shadow-sm">
+        <span className="text-sm font-medium text-gray-500">Attendance for</span>
+        <input
+          type="date"
+          className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-semibold text-gray-800"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+        />
       </div>
 
-      <div className="mb-4 flex items-center gap-2">
-        <input type="checkbox" checked={markAsHoliday} onChange={(e) => setMarkAsHoliday(e.target.checked)} />
-        <label className="text-sm">Mark whole day as holiday</label>
-        {markAsHoliday && (
-          <input
-            className="ml-2 flex-1 rounded border px-2 py-1 text-sm"
-            placeholder="Remark (e.g. Public holiday)"
-            value={holidayRemark}
-            onChange={(e) => setHolidayRemark(e.target.value)}
-          />
-        )}
-      </div>
+      <label className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm">
+        <input
+          type="checkbox"
+          checked={markAsHoliday}
+          onChange={(e) => setMarkAsHoliday(e.target.checked)}
+          className="h-5 w-5 rounded accent-indigo-600"
+        />
+        <span className="text-sm font-medium text-gray-700">Mark whole day as holiday</span>
+      </label>
+
+      {markAsHoliday && (
+        <input
+          className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm outline-none focus:border-indigo-400"
+          placeholder="Remark (e.g. Public holiday)"
+          value={holidayRemark}
+          onChange={(e) => setHolidayRemark(e.target.value)}
+        />
+      )}
 
       {!markAsHoliday && (
         <>
-          <div className="mb-3 grid grid-cols-2 gap-2 text-sm text-gray-600">
-            <div>Total strength: {students.length}</div>
-            <div>Present: {presentCount}</div>
+          <div className="grid grid-cols-4 gap-2">
+            <StatChip label="Strength" value={students.length} color="bg-indigo-50 text-indigo-700" />
+            <StatChip label="Present" value={presentCount} color="bg-emerald-50 text-emerald-700" />
+            <StatChip label="Absent" value={absentCount} color="bg-rose-50 text-rose-700" />
+            <StatChip label="Boys/Girls" value={`${boys.length}/${girls.length}`} color="bg-amber-50 text-amber-700" />
           </div>
-          <ul className="divide-y rounded border">
-            {students.map((s) => (
-              <li key={s.StudentID} className="flex items-center justify-between px-3 py-2">
-                <span>
-                  {s.Name} {s.Surname}
-                </span>
-                <button
-                  onClick={() => toggle(s.StudentID)}
-                  className={`rounded-full px-3 py-1 text-xs font-medium ${
-                    marks[s.StudentID] === 'N' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
-                  }`}
-                >
-                  {marks[s.StudentID] === 'N' ? 'Absent' : 'Present'}
-                </button>
-              </li>
-            ))}
-          </ul>
-          <div className="mt-3 text-xs text-gray-500">
-            Boys: {boys.length}, Girls: {girls.length}
+
+          <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
+            <ul className="divide-y divide-gray-100">
+              {students.map((s) => {
+                const present = marks[s.StudentID] !== 'N'
+                return (
+                  <li key={s.StudentID} className="flex items-center gap-3 px-4 py-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700">
+                      {initials(s.Name, s.Surname)}
+                    </div>
+                    <span className="flex-1 truncate text-sm font-medium text-gray-800">
+                      {s.Name} {s.Surname}
+                    </span>
+                    <button
+                      onClick={() => toggle(s.StudentID)}
+                      aria-pressed={present}
+                      className={`relative h-7 w-14 shrink-0 rounded-full transition-colors ${
+                        present ? 'bg-emerald-500' : 'bg-gray-300'
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
+                          present ? 'translate-x-7' : 'translate-x-0.5'
+                        }`}
+                      />
+                    </button>
+                  </li>
+                )
+              })}
+              {students.length === 0 && <li className="px-4 py-6 text-center text-sm text-gray-400">No students found.</li>}
+            </ul>
           </div>
         </>
       )}
@@ -120,11 +150,20 @@ export default function DailyEntry() {
       <button
         onClick={save}
         disabled={saving}
-        className="mt-4 w-full rounded bg-blue-600 py-2 font-medium text-white disabled:opacity-50"
+        className="w-full rounded-2xl bg-indigo-600 py-3.5 text-sm font-semibold text-white shadow-md shadow-indigo-200 transition active:scale-[0.99] disabled:opacity-50"
       >
-        {saving ? 'Saving...' : 'Save Attendance'}
+        {saving ? 'Saving…' : 'Save Attendance'}
       </button>
-      {status && <p className="mt-2 text-sm text-gray-600">{status}</p>}
+      {status && <p className="text-center text-xs font-medium text-gray-500">{status}</p>}
+    </div>
+  )
+}
+
+function StatChip({ label, value, color }: { label: string; value: string | number; color: string }) {
+  return (
+    <div className={`rounded-xl px-2 py-2.5 text-center ${color}`}>
+      <div className="text-base font-bold">{value}</div>
+      <div className="text-[10px] font-medium opacity-80">{label}</div>
     </div>
   )
 }
