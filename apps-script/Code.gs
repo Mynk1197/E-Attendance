@@ -10,7 +10,7 @@ var SHEET_HOLIDAYS = 'Holidays';
 
 var STUDENTS_HEADERS = ['StudentID', 'Class', 'Section', 'Name', 'Surname', 'DOB', 'ScholarNo', 'Category', 'Gender', 'Active'];
 var ATTENDANCE_HEADERS = ['Date', 'Class', 'Section', 'StudentID', 'Present', 'MarkedBy', 'Timestamp'];
-var HOLIDAYS_HEADERS = ['Date', 'Class', 'Remark'];
+var HOLIDAYS_HEADERS = ['Date', 'Class', 'Remark', 'ID', 'CreatedBy'];
 var TEACHERS_HEADERS = ['Email', 'Name', 'ClassesAssigned'];
 
 function doGet(e) {
@@ -56,7 +56,10 @@ function handle(e) {
         result = getHolidays(params);
         break;
       case 'addHoliday':
-        result = addHoliday(params);
+        result = addHoliday(params, teacher);
+        break;
+      case 'deleteHoliday':
+        result = deleteHoliday(params, teacher);
         break;
       default:
         throw new Error('Unknown action: ' + action);
@@ -378,9 +381,45 @@ function getHolidays(params) {
   });
 }
 
-function addHoliday(params) {
-  appendRow(SHEET_HOLIDAYS, HOLIDAYS_HEADERS, { Date: params.date, Class: params.class || 'ALL', Remark: params.remark || 'Holiday' });
+function addHoliday(params, teacher) {
+  var id = 'H' + new Date().getTime() + Math.floor(Math.random() * 1000);
+  appendRow(SHEET_HOLIDAYS, HOLIDAYS_HEADERS, {
+    Date: params.date,
+    Class: params.class || 'ALL',
+    Remark: params.remark || 'Holiday',
+    ID: id,
+    CreatedBy: teacher.email,
+  });
+  return { id: id };
+}
+
+function deleteHoliday(params, teacher) {
+  var rowIdx = findRowIndexByKey(SHEET_HOLIDAYS, HOLIDAYS_HEADERS, 'ID', params.id);
+  if (rowIdx < 0) throw new Error('Holiday not found');
+  var sh = getSheet(SHEET_HOLIDAYS);
+  var createdBy = sh.getRange(rowIdx, HOLIDAYS_HEADERS.indexOf('CreatedBy') + 1).getValue();
+  if (String(createdBy).toLowerCase() !== teacher.email) throw new Error('You can only delete holidays you created');
+  sh.deleteRow(rowIdx);
   return { ok: true };
+}
+
+// One-time repair: run manually if holidays added before ID/CreatedBy
+// existed need those columns backfilled so they can be deleted.
+function backfillHolidayIds() {
+  var sh = getSheet(SHEET_HOLIDAYS);
+  sh.getRange(1, 1, 1, HOLIDAYS_HEADERS.length).setValues([HOLIDAYS_HEADERS]);
+  var lastRow = sh.getLastRow();
+  if (lastRow < 2) return;
+  var idCol = HOLIDAYS_HEADERS.indexOf('ID') + 1;
+  var createdByCol = HOLIDAYS_HEADERS.indexOf('CreatedBy') + 1;
+  var ids = sh.getRange(2, idCol, lastRow - 1, 1).getValues();
+  var owner = Session.getEffectiveUser().getEmail().toLowerCase();
+  for (var i = 0; i < ids.length; i++) {
+    if (!ids[i][0]) {
+      sh.getRange(i + 2, idCol).setValue('H' + new Date().getTime() + i);
+      sh.getRange(i + 2, createdByCol).setValue(owner);
+    }
+  }
 }
 
 // ---------- One-time setup helper ----------

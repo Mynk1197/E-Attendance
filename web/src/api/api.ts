@@ -47,4 +47,5 @@ export const api = {
   getHolidays: (klass: string, dateFrom = '', dateTo = '') =>
     call('getHolidays', { class: klass, dateFrom, dateTo }),
   addHoliday: (date: string, klass: string, remark: string) => call('addHoliday', { date, class: klass, remark }),
+  deleteHoliday: (id: string) => call('deleteHoliday', { id }),
 }
