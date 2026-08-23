@@ -18,8 +18,7 @@ function doGet(e) {
 }
 
 function doPost(e) {
-  var params = e.postData ? JSON.parse(e.postData.contents) : {};
-  return handle({ parameter: params });
+  return handle(e);
 }
 
 function handle(e) {
