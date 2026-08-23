@@ -8,7 +8,6 @@ const emptyForm = { Name: '', Surname: '', DOB: '', ScholarNo: '', Category: '',
 const REQUIRED_FIELDS: { key: keyof typeof emptyForm; label: string }[] = [
   { key: 'Name', label: 'Name' },
   { key: 'Surname', label: 'Surname' },
-  { key: 'DOB', label: 'DOB' },
   { key: 'Category', label: 'Category' },
   { key: 'Gender', label: 'Gender' },
 ]
@@ -122,7 +121,7 @@ export default function Students() {
           <Field label="Surname" required>
             <input className={inputClass} value={form.Surname} onChange={(e) => setForm({ ...form, Surname: e.target.value })} />
           </Field>
-          <Field label="DOB" required>
+          <Field label="DOB">
             <input className={inputClass} type="date" value={form.DOB} onChange={(e) => setForm({ ...form, DOB: e.target.value })} />
           </Field>
           <Field label="Roll No.">

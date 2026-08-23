@@ -127,7 +127,13 @@ function sheetToObjects(name, headers) {
   var values = sh.getRange(2, 1, lastRow - 1, headers.length).getValues();
   return values.map(function (row) {
     var obj = {};
-    headers.forEach(function (h, i) { obj[h] = row[i]; });
+    headers.forEach(function (h, i) {
+      var cell = row[i];
+      // Sheets silently converts date-looking text (e.g. a DOB typed as
+      // 2015-05-06) into a real Date value; normalize it back to
+      // yyyy-MM-dd so it round-trips correctly into <input type="date">.
+      obj[h] = cell instanceof Date ? Utilities.formatDate(cell, 'Asia/Kolkata', 'yyyy-MM-dd') : cell;
+    });
     return obj;
   });
 }
