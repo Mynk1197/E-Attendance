@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { api, type Teacher } from '../api/api'
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string
@@ -7,9 +7,15 @@ interface AuthState {
   teacher: Teacher | null
   loading: boolean
   signOut: () => void
+  renderSignInButton: (el: HTMLElement) => void
 }
 
-const AuthContext = createContext<AuthState>({ teacher: null, loading: true, signOut: () => {} })
+const AuthContext = createContext<AuthState>({
+  teacher: null,
+  loading: true,
+  signOut: () => {},
+  renderSignInButton: () => {},
+})
 
 export function useAuth() {
   return useContext(AuthContext)
@@ -32,6 +38,7 @@ declare global {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [teacher, setTeacher] = useState<Teacher | null>(null)
   const [loading, setLoading] = useState(true)
+  const initializedRef = useRef(false)
 
   useEffect(() => {
     const cachedTeacher = localStorage.getItem('teacher')
@@ -62,10 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         },
       })
-      const el = document.getElementById('google-signin-button')
-      if (el) {
-        window.google?.accounts.id.renderButton(el, { theme: 'outline', size: 'large', width: 280 })
-      }
+      initializedRef.current = true
       setLoading(false)
     }
     document.body.appendChild(script)
@@ -77,5 +81,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setTeacher(null)
   }
 
-  return <AuthContext.Provider value={{ teacher, loading, signOut }}>{children}</AuthContext.Provider>
+  const renderSignInButton = (el: HTMLElement) => {
+    if (initializedRef.current && window.google) {
+      window.google.accounts.id.renderButton(el, { theme: 'outline', size: 'large', width: 280 })
+    }
+  }
+
+  return (
+    <AuthContext.Provider value={{ teacher, loading, signOut, renderSignInButton }}>{children}</AuthContext.Provider>
+  )
 }
