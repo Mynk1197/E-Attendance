@@ -50,6 +50,10 @@ export default function Holidays() {
 
   async function submit() {
     setError('')
+    if (holidays.some((h) => h.Date === date)) {
+      setError('A holiday is already added for this date. Delete it first to add a different one.')
+      return
+    }
     setSubmitting(true)
     try {
       await api.addHoliday(date, klass, remark || 'Holiday')

@@ -382,6 +382,13 @@ function getHolidays(params) {
 }
 
 function addHoliday(params, teacher) {
+  var klass = params.class || 'ALL';
+  var existing = sheetToObjects(SHEET_HOLIDAYS, HOLIDAYS_HEADERS).filter(function (h) {
+    return String(h.Date) === String(params.date) && String(h.Class) === String(klass);
+  });
+  if (existing.length > 0) {
+    throw new Error('A holiday is already added for this date. Delete it first to add a different one.');
+  }
   var id = 'H' + new Date().getTime() + Math.floor(Math.random() * 1000);
   appendRow(SHEET_HOLIDAYS, HOLIDAYS_HEADERS, {
     Date: params.date,
