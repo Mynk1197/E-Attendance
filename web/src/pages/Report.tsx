@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useClassSelection } from '../auth/ClassContext'
 import { api } from '../api/api'
 import { db } from '../db/db'
+import { todayStr } from '../lib/date'
 
 interface DaySummary {
   date: string
@@ -29,10 +30,6 @@ interface Totals {
 interface ReportData {
   days: DaySummary[]
   totals: Totals
-}
-
-function todayStr() {
-  return new Date().toISOString().slice(0, 10)
 }
 
 function formatDateLabel(ds: string) {

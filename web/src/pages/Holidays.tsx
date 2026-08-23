@@ -3,6 +3,7 @@ import { useAuth } from '../auth/AuthContext'
 import { useClassSelection } from '../auth/ClassContext'
 import { api } from '../api/api'
 import { IconSun } from '../components/icons'
+import { todayStr } from '../lib/date'
 
 interface Holiday {
   Date: string
@@ -10,10 +11,6 @@ interface Holiday {
   Remark: string
   ID: string
   CreatedBy: string
-}
-
-function todayStr() {
-  return new Date().toISOString().slice(0, 10)
 }
 
 function formatDateLabel(ds: string) {

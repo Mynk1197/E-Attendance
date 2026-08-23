@@ -3,10 +3,7 @@ import { useClassSelection } from '../auth/ClassContext'
 import { api } from '../api/api'
 import { db, type CachedStudent } from '../db/db'
 import { flushQueue } from '../db/sync'
-
-function todayStr() {
-  return new Date().toISOString().slice(0, 10)
-}
+import { todayStr } from '../lib/date'
 
 function isSunday(dateStr: string) {
   return new Date(dateStr + 'T00:00:00').getDay() === 0

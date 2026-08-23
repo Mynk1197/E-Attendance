@@ -397,7 +397,38 @@ function addHoliday(params, teacher) {
     ID: id,
     CreatedBy: teacher.email,
   });
+  forceCellAsText(SHEET_HOLIDAYS, HOLIDAYS_HEADERS, findRowIndexByKey(SHEET_HOLIDAYS, HOLIDAYS_HEADERS, 'ID', id), 'Date', params.date);
   return { id: id };
+}
+
+// Same fix as forceDOBAsText, generalized: writing a date cell lets Sheets
+// auto-convert it, and depending on the spreadsheet's own timezone setting
+// that can land on a different calendar day than what was actually typed.
+// Forcing plain-text format keeps the exact yyyy-MM-dd string.
+function forceCellAsText(sheetName, headers, rowIdx, columnHeader, value) {
+  if (rowIdx < 0 || !value) return;
+  var sh = getSheet(sheetName);
+  var col = headers.indexOf(columnHeader) + 1;
+  var cell = sh.getRange(rowIdx, col);
+  cell.setNumberFormat('@');
+  cell.setValue(String(value));
+}
+
+// One-time repair: run manually if holiday dates were saved before this
+// fix and are displaying a day off from what was actually entered.
+function normalizeHolidayDates() {
+  var sh = getSheet(SHEET_HOLIDAYS);
+  var lastRow = sh.getLastRow();
+  if (lastRow < 2) return;
+  var col = HOLIDAYS_HEADERS.indexOf('Date') + 1;
+  var range = sh.getRange(2, col, lastRow - 1, 1);
+  var values = range.getValues();
+  range.setNumberFormat('@');
+  var fixed = values.map(function (row) {
+    var cell = row[0];
+    return [cell instanceof Date ? Utilities.formatDate(cell, 'Asia/Kolkata', 'yyyy-MM-dd') : String(cell)];
+  });
+  range.setValues(fixed);
 }
 
 function deleteHoliday(params, teacher) {
