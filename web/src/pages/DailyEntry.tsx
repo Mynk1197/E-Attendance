@@ -36,6 +36,7 @@ export default function DailyEntry() {
   const [alreadySaved, setAlreadySaved] = useState(false)
   const [saving, setSaving] = useState(false)
   const [checkingDate, setCheckingDate] = useState(false)
+  const [loadingStudents, setLoadingStudents] = useState(true)
   const [status, setStatus] = useState('')
 
   useEffect(() => {
@@ -96,6 +97,7 @@ export default function DailyEntry() {
   }
 
   async function loadStudents() {
+    setLoadingStudents(true)
     const cached = await db.students.where('Class').equals(klass).toArray()
     setStudents(cached.filter((s) => !section || s.Section === section))
     try {
@@ -107,6 +109,8 @@ export default function DailyEntry() {
       setMarks((prev) => ({ ...initial, ...prev }))
     } catch {
       // offline: rely on cache
+    } finally {
+      setLoadingStudents(false)
     }
   }
 
@@ -150,13 +154,14 @@ export default function DailyEntry() {
   const presentCount = Object.values(marks).filter((v) => v === 'Y').length
   const absentCount = students.length - presentCount
   const locked = alreadySaved || !!lockedHoliday
+  const pageLoading = loadingStudents || checkingDate
 
   return (
     <div className="mx-auto max-w-md space-y-4 p-4">
       <div className="flex items-center justify-between rounded-2xl bg-white p-3 shadow-sm">
         <span className="flex items-center gap-2 text-sm font-medium text-gray-500">
           Attendance for
-          {checkingDate && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />}
+          {pageLoading && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />}
         </span>
         <input
           type="date"
@@ -166,11 +171,13 @@ export default function DailyEntry() {
         />
       </div>
 
-      {checkingDate && (
-        <div className="rounded-2xl bg-white p-4 text-center text-sm text-gray-400 shadow-sm">Checking this date…</div>
+      {pageLoading && (
+        <div className="rounded-2xl bg-white p-4 text-center text-sm text-gray-400 shadow-sm">
+          {loadingStudents ? 'Loading students…' : 'Checking this date…'}
+        </div>
       )}
 
-      {!checkingDate && (
+      {!pageLoading && (
         <>
           {lockedHoliday && (
             <div className="rounded-2xl bg-amber-50 p-4 text-sm font-medium text-amber-700 shadow-sm">

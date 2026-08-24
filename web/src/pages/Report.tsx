@@ -41,6 +41,7 @@ export default function Report({ period }: { period: 'weekly' | 'monthly' }) {
   const [date, setDate] = useState(todayStr())
   const [report, setReport] = useState<ReportData | null>(null)
   const [lastSynced, setLastSynced] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!klass) return
@@ -48,6 +49,8 @@ export default function Report({ period }: { period: 'weekly' | 'monthly' }) {
   }, [klass, section, date, period])
 
   async function load() {
+    setLoading(true)
+    setReport(null)
     const cacheKey = `${klass}|${section}|${period}|${date}`
     const cached = await db.reportsCache.get(cacheKey)
     if (cached) {
@@ -62,6 +65,8 @@ export default function Report({ period }: { period: 'weekly' | 'monthly' }) {
       await db.reportsCache.put({ key: cacheKey, data: fresh, fetchedAt })
     } catch {
       // offline: keep cached value
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -77,7 +82,14 @@ export default function Report({ period }: { period: 'weekly' | 'monthly' }) {
         />
       </div>
 
-      {!report && (
+      {loading && !report && (
+        <div className="flex items-center justify-center gap-2 rounded-2xl bg-white p-6 text-sm text-gray-400 shadow-sm">
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />
+          Loading report…
+        </div>
+      )}
+
+      {!loading && !report && (
         <div className="rounded-2xl bg-white p-6 text-center text-sm text-gray-400 shadow-sm">
           No data yet{navigator.onLine ? '' : ' (offline)'}.
         </div>
