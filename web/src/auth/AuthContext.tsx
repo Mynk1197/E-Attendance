@@ -78,7 +78,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = () => {
     localStorage.removeItem('idToken')
     localStorage.removeItem('teacher')
-    setTeacher(null)
+    // Google's Identity Services button ties its internal state to the
+    // credential already used in this page load, so re-rendering it into
+    // a fresh div after sign-out often stays blank. A full reload gives
+    // it a clean slate, same as a first visit.
+    window.location.reload()
   }
 
   const renderSignInButton = (el: HTMLElement) => {
