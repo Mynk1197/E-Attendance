@@ -6,6 +6,7 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string
 interface AuthState {
   teacher: Teacher | null
   loading: boolean
+  loginError: string | null
   signOut: () => void
   renderSignInButton: (el: HTMLElement) => void
 }
@@ -13,6 +14,7 @@ interface AuthState {
 const AuthContext = createContext<AuthState>({
   teacher: null,
   loading: true,
+  loginError: null,
   signOut: () => {},
   renderSignInButton: () => {},
 })
@@ -38,6 +40,7 @@ declare global {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [teacher, setTeacher] = useState<Teacher | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loginError, setLoginError] = useState<string | null>(null)
   const initializedRef = useRef(false)
 
   useEffect(() => {
@@ -56,6 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       window.google?.accounts.id.initialize({
         client_id: GOOGLE_CLIENT_ID,
         callback: async (response: { credential: string }) => {
+          setLoginError(null)
           try {
             const result = await api.login(response.credential)
             localStorage.setItem('teacher', JSON.stringify(result))
@@ -63,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           } catch (err) {
             console.error(err)
             localStorage.removeItem('idToken')
-            alert('Sign-in failed: not an authorized teacher account.')
+            setLoginError('Sign-in failed: this Google account is not an authorized teacher account.')
           } finally {
             setLoading(false)
           }
@@ -92,6 +96,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ teacher, loading, signOut, renderSignInButton }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ teacher, loading, loginError, signOut, renderSignInButton }}>
+      {children}
+    </AuthContext.Provider>
   )
 }
