@@ -32,7 +32,7 @@ function Shell() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600" />
       </div>
     )
@@ -42,7 +42,13 @@ function Shell() {
   return (
     <ClassProvider>
       <BrowserRouter>
-        <div className="mx-auto flex min-h-screen max-w-md flex-col bg-gray-100">
+        <div
+          className="mx-auto flex min-h-screen max-w-md flex-col bg-slate-50"
+          style={{
+            backgroundImage: 'radial-gradient(rgba(79,70,229,0.08) 1px, transparent 1px)',
+            backgroundSize: '20px 20px',
+          }}
+        >
           <TopBar />
           <main className="flex-1 overflow-y-auto pb-4">
             <AppRoutes />

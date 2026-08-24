@@ -11,10 +11,10 @@ export default function TopBar() {
   const initial = teacher?.name?.trim()?.[0]?.toUpperCase() ?? '?'
 
   return (
-    <header className="sticky top-0 z-20 bg-linear-to-r from-indigo-600 to-indigo-500 text-white shadow-sm">
+    <header className="sticky top-0 z-20 bg-linear-to-b from-slate-900 via-indigo-950 to-indigo-800 text-white shadow-lg">
       <div className="flex items-center justify-between px-4 pt-[max(env(safe-area-inset-top),0.75rem)] pb-3">
         <div>
-          <p className="text-[11px] font-medium uppercase tracking-wide text-indigo-100">E-Attendance</p>
+          <p className="text-[11px] font-medium uppercase tracking-wide text-indigo-300">E-Attendance</p>
           <div className="mt-0.5 flex items-center gap-1">
             {options.length > 1 ? (
               <div className="relative">
