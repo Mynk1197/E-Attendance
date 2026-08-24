@@ -43,13 +43,13 @@ export default function Login() {
         </div>
       </div>
 
-      <p
-        className="relative pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-2 leading-tight text-indigo-200"
-        style={{ fontFamily: "'Caveat', cursive" }}
-      >
-        <span className="block text-lg">Designed &amp; developed by</span>
-        <span className="block text-2xl font-bold text-white">Mayank Kushwah</span>
-      </p>
+      <div className="relative pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-2">
+        <p className="leading-tight text-indigo-200" style={{ fontFamily: "'Caveat', cursive" }}>
+          <span className="block text-lg">Designed and Developed By</span>
+          <span className="block text-2xl font-bold text-white">Mayank Kushwah</span>
+        </p>
+        <p className="mt-1 text-[11px] text-indigo-300/70">&copy; 2026</p>
+      </div>
     </div>
   )
 }
