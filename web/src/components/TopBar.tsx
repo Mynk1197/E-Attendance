@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { useClassSelection } from '../auth/ClassContext'
+import { IconChevronDown } from './icons'
 
 export default function TopBar() {
   const { teacher, signOut } = useAuth()
@@ -16,21 +17,25 @@ export default function TopBar() {
           <p className="text-[11px] font-medium uppercase tracking-wide text-indigo-100">E-Attendance</p>
           <div className="mt-0.5 flex items-center gap-1">
             {options.length > 1 ? (
-              <select
-                className="appearance-none bg-transparent text-lg font-bold outline-none"
-                value={selected}
-                onChange={(e) => setSelected(e.target.value)}
-              >
-                {options.map((o) => (
-                  <option key={o} value={o} className="text-gray-900">
-                    Class {o}
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                <select
+                  className="appearance-none rounded-lg border border-white/30 bg-white/15 py-1 pl-2.5 pr-7 text-lg font-bold outline-none"
+                  value={selected}
+                  onChange={(e) => setSelected(e.target.value)}
+                >
+                  {options.map((o) => (
+                    <option key={o} value={o} className="text-gray-900">
+                      Class {o}
+                    </option>
+                  ))}
+                </select>
+                <IconChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-white" />
+              </div>
             ) : (
               <span className="text-lg font-bold">Class {selected}</span>
             )}
           </div>
+          {options.length > 1 && <p className="mt-0.5 text-[10px] text-indigo-100">Tap to switch class</p>}
         </div>
 
         <div className="relative">
