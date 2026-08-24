@@ -169,7 +169,8 @@ export default function DailyEntry() {
         </span>
         <input
           type="date"
-          className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-semibold text-gray-800"
+          disabled={pageLoading}
+          className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-semibold text-gray-800 disabled:opacity-50"
           value={date}
           onChange={(e) => setDate(e.target.value)}
         />

@@ -76,7 +76,8 @@ export default function Report({ period }: { period: 'weekly' | 'monthly' }) {
         <span className="text-sm font-medium text-gray-500">{period === 'weekly' ? 'Any day in week' : 'Any day in month'}</span>
         <input
           type="date"
-          className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-semibold text-gray-800"
+          disabled={loading}
+          className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-semibold text-gray-800 disabled:opacity-50"
           value={date}
           onChange={(e) => setDate(e.target.value)}
         />
