@@ -31,17 +31,21 @@ export default function Holidays() {
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (klass) load()
   }, [klass])
 
   async function load() {
+    setLoading(true)
     try {
       const list = (await api.getHolidays(klass)) as Holiday[]
       setHolidays(list.sort((a, b) => (a.Date < b.Date ? 1 : -1)))
     } catch {
       setError('Offline: cannot load holiday list.')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -104,31 +108,40 @@ export default function Holidays() {
         </button>
       </fieldset>
 
-      <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
-        <ul className="divide-y divide-gray-100">
-          {holidays.map((h) => (
-            <li key={h.ID} className="flex items-center gap-3 px-4 py-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-500">
-                <IconSun className="h-4.5 w-4.5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-gray-800">{h.Remark}</p>
-                <p className="text-xs text-gray-400">{formatDateLabel(h.Date)}</p>
-              </div>
-              {h.CreatedBy?.toLowerCase() === teacher?.email && (
-                <button
-                  onClick={() => remove(h.ID)}
-                  disabled={deletingId === h.ID}
-                  className="shrink-0 text-xs font-semibold text-rose-500 disabled:opacity-50"
-                >
-                  {deletingId === h.ID ? 'Removing…' : 'Remove'}
-                </button>
-              )}
-            </li>
-          ))}
-          {holidays.length === 0 && <li className="px-4 py-6 text-center text-sm text-gray-400">No holidays added yet.</li>}
-        </ul>
-      </div>
+      {loading && (
+        <div className="flex items-center justify-center gap-2 rounded-2xl bg-white p-6 text-sm text-gray-400 shadow-sm">
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />
+          Loading holidays…
+        </div>
+      )}
+
+      {!loading && (
+        <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
+          <ul className="divide-y divide-gray-100">
+            {holidays.map((h) => (
+              <li key={h.ID} className="flex items-center gap-3 px-4 py-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-500">
+                  <IconSun className="h-4.5 w-4.5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-gray-800">{h.Remark}</p>
+                  <p className="text-xs text-gray-400">{formatDateLabel(h.Date)}</p>
+                </div>
+                {h.CreatedBy?.toLowerCase() === teacher?.email && (
+                  <button
+                    onClick={() => remove(h.ID)}
+                    disabled={deletingId === h.ID}
+                    className="shrink-0 text-xs font-semibold text-rose-500 disabled:opacity-50"
+                  >
+                    {deletingId === h.ID ? 'Removing…' : 'Remove'}
+                  </button>
+                )}
+              </li>
+            ))}
+            {holidays.length === 0 && <li className="px-4 py-6 text-center text-sm text-gray-400">No holidays added yet.</li>}
+          </ul>
+        </div>
+      )}
     </div>
   )
 }
