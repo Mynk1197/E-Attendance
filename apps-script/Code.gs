@@ -327,7 +327,12 @@ function getReport(params) {
       continue;
     }
     var dayRecords = attendance.filter(function (a) { return a.Date === ds; });
-    var summary = summarizeDay(dayRecords, studentById, totalStrength);
+    // A day with no attendance rows at all hasn't been reported yet (not
+    // the same as everyone being absent), so it should show 0/0 rather
+    // than treating the whole class as absent.
+    var summary = dayRecords.length === 0
+      ? { boysPresent: 0, girlsPresent: 0, totalPresent: 0, totalAbsent: 0, scPresent: 0, stPresent: 0, obcPresent: 0, genPresent: 0 }
+      : summarizeDay(dayRecords, studentById, totalStrength);
     summary.date = ds;
     summary.holiday = false;
     days.push(summary);
