@@ -13,6 +13,10 @@ function initials(name: string, surname: string) {
   return `${name[0] ?? ''}${surname[0] ?? ''}`.toUpperCase()
 }
 
+function sortByName(list: CachedStudent[]) {
+  return [...list].sort((a, b) => `${a.Name} ${a.Surname}`.localeCompare(`${b.Name} ${b.Surname}`))
+}
+
 interface Holiday {
   Date: string
   Class: string
@@ -99,11 +103,11 @@ export default function DailyEntry() {
   async function loadStudents() {
     setLoadingStudents(true)
     const cached = await db.students.where('Class').equals(klass).toArray()
-    setStudents(cached.filter((s) => !section || s.Section === section))
+    setStudents(sortByName(cached.filter((s) => !section || s.Section === section)))
     try {
       const fresh = (await api.getStudents(klass, section)) as CachedStudent[]
       await db.students.bulkPut(fresh)
-      setStudents(fresh)
+      setStudents(sortByName(fresh))
       const initial: Record<string, 'Y' | 'N'> = {}
       fresh.forEach((s) => (initial[s.StudentID] = 'Y'))
       setMarks((prev) => ({ ...initial, ...prev }))
