@@ -4,6 +4,26 @@ function getIdToken(): string | null {
   return localStorage.getItem('idToken')
 }
 
+// Google ID tokens expire ~1 hour after being issued, and the backend
+// re-verifies the token on every call -- these are the errors it returns
+// once that happens (or if the account was removed from the Teachers
+// sheet mid-session). Distinct from business errors like "already saved"
+// or "not found", which should just surface as-is.
+function isAuthError(message: string): boolean {
+  return (
+    message.includes('Invalid Google token') ||
+    message.includes('Missing idToken') ||
+    message.includes('Not authorized') ||
+    message.includes('Email not verified')
+  )
+}
+
+function forceReauth() {
+  localStorage.removeItem('idToken')
+  localStorage.removeItem('teacher')
+  window.location.reload()
+}
+
 async function call<T>(action: string, params: Record<string, string> = {}): Promise<T> {
   const idToken = getIdToken()
   if (!idToken) throw new Error('Not signed in')
@@ -14,7 +34,15 @@ async function call<T>(action: string, params: Record<string, string> = {}): Pro
   const query = new URLSearchParams({ action, idToken, ...params })
   const res = await fetch(`${APPS_SCRIPT_URL}?${query.toString()}`)
   const json = await res.json()
-  if (!json.ok) throw new Error(json.error || 'Request failed')
+  if (!json.ok) {
+    const message = json.error || 'Request failed'
+    // A failed login attempt (e.g. an unauthorized Google account) is
+    // handled inline on the login screen, not by force-reauthenticating.
+    if (action !== 'login' && isAuthError(message)) {
+      forceReauth()
+    }
+    throw new Error(message)
+  }
   return json.data as T
 }
 
