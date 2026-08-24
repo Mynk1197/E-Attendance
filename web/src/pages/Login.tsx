@@ -5,30 +5,34 @@ export default function Login() {
   const { renderSignInButton } = useAuth()
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center overflow-hidden bg-indigo-700 px-6 text-center">
-      {/* Decorative wallpaper: layered blurred blobs + a subtle dot grid, all CSS/SVG so it works fully offline */}
+    <div className="relative flex h-[100dvh] flex-col items-center overflow-hidden bg-slate-900 px-6 text-center">
+      {/* Decorative wallpaper: deep gradient base, a soft glow, faint ledger-line
+          texture, and a curved band near the bottom -- all CSS/SVG so it
+          renders reliably offline (no external image dependency). */}
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0 bg-linear-to-br from-indigo-700 via-indigo-600 to-violet-700" />
-        <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-fuchsia-400/30 blur-3xl" />
-        <div className="absolute -right-20 top-1/3 h-80 w-80 rounded-full bg-sky-400/25 blur-3xl" />
-        <div className="absolute -bottom-32 left-1/4 h-96 w-96 rounded-full bg-indigo-300/25 blur-3xl" />
+        <div className="absolute inset-0 bg-linear-to-b from-slate-900 via-indigo-950 to-indigo-900" />
+        <div className="absolute -right-32 -top-32 h-96 w-96 rounded-full bg-indigo-500/25 blur-3xl" />
+        <div className="absolute -bottom-40 -left-24 h-80 w-80 rounded-full bg-violet-500/15 blur-3xl" />
         <div
-          className="absolute inset-0 opacity-[0.15]"
+          className="absolute inset-0 opacity-[0.06]"
           style={{
-            backgroundImage: 'radial-gradient(rgba(255,255,255,0.8) 1px, transparent 1px)',
-            backgroundSize: '22px 22px',
+            backgroundImage:
+              'repeating-linear-gradient(0deg, rgba(255,255,255,0.6) 0, rgba(255,255,255,0.6) 1px, transparent 1px, transparent 40px)',
           }}
         />
+        <svg className="absolute bottom-0 left-0 w-full text-indigo-500/10" viewBox="0 0 400 120" preserveAspectRatio="none">
+          <path d="M0,60 C100,110 300,10 400,60 L400,120 L0,120 Z" fill="currentColor" />
+        </svg>
       </div>
 
-      <div className="relative flex flex-1 flex-col items-center justify-center gap-6">
-        <LogoMark className="h-20 w-20 drop-shadow-lg" />
+      <div className="relative flex flex-1 flex-col items-center justify-center gap-5">
+        <LogoMark className="h-16 w-16 drop-shadow-lg" />
         <div>
           <h1 className="text-2xl font-extrabold text-white">E-Attendance</h1>
-          <p className="mt-1 text-sm text-indigo-100">Daily attendance, made simple.</p>
+          <p className="mt-1 text-sm text-indigo-200">Daily attendance, made simple.</p>
         </div>
-        <div className="mt-2 w-full max-w-xs rounded-2xl bg-white p-6 shadow-xl">
-          <p className="mb-4 text-sm font-medium text-gray-500">Sign in with your school Google account</p>
+        <div className="w-full max-w-xs rounded-2xl bg-white p-5 shadow-xl">
+          <p className="mb-3 text-sm font-medium text-gray-500">Sign in with your school Google account</p>
           <div className="flex justify-center">
             <div
               ref={(el) => {
@@ -40,10 +44,11 @@ export default function Login() {
       </div>
 
       <p
-        className="relative pb-[max(env(safe-area-inset-bottom),1rem)] pt-4 text-2xl text-indigo-100"
+        className="relative pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-2 leading-tight text-indigo-200"
         style={{ fontFamily: "'Caveat', cursive" }}
       >
-        Designed &amp; developed by Mayank Kushwah
+        <span className="block text-lg">Designed &amp; developed by</span>
+        <span className="block text-2xl font-bold text-white">Mayank Kushwah</span>
       </p>
     </div>
   )
