@@ -1,14 +1,12 @@
 import { useAuth } from '../auth/AuthContext'
-import { IconCalendarCheck } from '../components/icons'
+import { LogoMark } from '../components/icons'
 
 export default function Login() {
   const { renderSignInButton } = useAuth()
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-linear-to-b from-indigo-600 to-indigo-500 px-6 text-center">
-      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-sm">
-        <IconCalendarCheck className="h-8 w-8 text-white" />
-      </div>
+      <LogoMark className="h-20 w-20 drop-shadow-lg" />
       <div>
         <h1 className="text-2xl font-extrabold text-white">E-Attendance</h1>
         <p className="mt-1 text-sm text-indigo-100">Daily attendance, made simple.</p>
