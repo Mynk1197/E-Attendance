@@ -119,10 +119,25 @@ export default function DailyEntry() {
     if (alreadySaved || lockedHoliday) return
     setSaving(true)
     setStatus('')
-    const records = markAsHoliday
-      ? students.map((s) => ({ studentId: s.StudentID, present: 'H' as const }))
-      : students.map((s) => ({ studentId: s.StudentID, present: marks[s.StudentID] ?? 'N' }))
 
+    if (markAsHoliday) {
+      // A holiday record in the Holidays sheet is the single source of
+      // truth for "this date is a holiday" (it's what both the Holidays
+      // page and saveAttendance's own holiday check rely on), so create
+      // that instead of writing 'H' attendance rows. Requires internet.
+      try {
+        await api.addHoliday(date, klass, holidayRemark || 'Holiday')
+        setStatus('Marked as holiday.')
+        await checkDateState()
+      } catch (e) {
+        setStatus(e instanceof Error ? e.message : 'Failed. Are you online?')
+      } finally {
+        setSaving(false)
+      }
+      return
+    }
+
+    const records = students.map((s) => ({ studentId: s.StudentID, present: marks[s.StudentID] ?? 'N' }))
     await db.attendanceQueue.add({ class: klass, section, date, records, createdAt: new Date().toISOString() })
     const result = await flushQueue()
     setSaving(false)
@@ -248,7 +263,7 @@ export default function DailyEntry() {
               disabled={saving}
               className="w-full rounded-2xl bg-indigo-600 py-3.5 text-sm font-semibold text-white shadow-md shadow-indigo-200 transition active:scale-[0.99] disabled:opacity-50"
             >
-              {saving ? 'Saving…' : 'Save Attendance'}
+              {saving ? 'Saving…' : markAsHoliday ? 'Mark as Holiday' : 'Save Attendance'}
             </button>
           )}
           {status && <p className="text-center text-xs font-medium text-gray-500">{status}</p>}
