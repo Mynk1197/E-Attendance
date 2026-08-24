@@ -40,12 +40,14 @@ export default function Students() {
   const [error, setError] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (klass) load()
   }, [klass, section])
 
   async function load() {
+    setLoading(true)
     try {
       const fresh = (await api.getStudents(klass, section)) as CachedStudent[]
       setStudents(fresh)
@@ -54,6 +56,8 @@ export default function Students() {
       const cached = await db.students.where('Class').equals(klass).toArray()
       setStudents(cached.filter((s) => !section || s.Section === section))
       setError('Offline: showing cached roster. Add/edit requires internet.')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -169,6 +173,14 @@ export default function Students() {
         </fieldset>
       )}
 
+      {loading && (
+        <div className="flex items-center justify-center gap-2 rounded-2xl bg-white p-6 text-sm text-gray-400 shadow-sm">
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />
+          Loading roster…
+        </div>
+      )}
+
+      {!loading && (
       <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
         <ul className="divide-y divide-gray-100">
           {students.map((s) => (
@@ -197,6 +209,7 @@ export default function Students() {
           {students.length === 0 && <li className="px-4 py-6 text-center text-sm text-gray-400">No students yet.</li>}
         </ul>
       </div>
+      )}
     </div>
   )
 }
