@@ -74,13 +74,24 @@ export default function Report({ period }: { period: 'weekly' | 'monthly' }) {
     <div className="mx-auto max-w-md space-y-4 p-4">
       <div className="flex items-center justify-between rounded-2xl bg-white p-3 shadow-sm">
         <span className="text-sm font-medium text-gray-500">{period === 'weekly' ? 'Any day in week' : 'Any day in month'}</span>
-        <input
-          type="date"
-          disabled={loading}
-          className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-semibold text-gray-800 disabled:opacity-50"
-          value={date}
-          onChange={(e) => setDate(e.target.value || todayStr())}
-        />
+        <div className="flex items-center gap-2">
+          {date !== todayStr() && (
+            <button
+              onClick={() => setDate(todayStr())}
+              disabled={loading}
+              className="text-xs font-semibold text-indigo-600 disabled:opacity-50"
+            >
+              Today
+            </button>
+          )}
+          <input
+            type="date"
+            disabled={loading}
+            className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-semibold text-gray-800 disabled:opacity-50"
+            value={date}
+            onChange={(e) => setDate(e.target.value || todayStr())}
+          />
+        </div>
       </div>
 
       {loading && !report && (

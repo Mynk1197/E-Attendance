@@ -167,13 +167,24 @@ export default function DailyEntry() {
           Attendance for
           {pageLoading && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />}
         </span>
-        <input
-          type="date"
-          disabled={pageLoading}
-          className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-semibold text-gray-800 disabled:opacity-50"
-          value={date}
-          onChange={(e) => setDate(e.target.value || todayStr())}
-        />
+        <div className="flex items-center gap-2">
+          {date !== todayStr() && (
+            <button
+              onClick={() => setDate(todayStr())}
+              disabled={pageLoading}
+              className="text-xs font-semibold text-indigo-600 disabled:opacity-50"
+            >
+              Today
+            </button>
+          )}
+          <input
+            type="date"
+            disabled={pageLoading}
+            className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-semibold text-gray-800 disabled:opacity-50"
+            value={date}
+            onChange={(e) => setDate(e.target.value || todayStr())}
+          />
+        </div>
       </div>
 
       {pageLoading && (
