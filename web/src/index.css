@@ -35,3 +35,11 @@ button {
   background: #d1d5db;
   border-radius: 999px;
 }
+
+/* Hide the native clear ("x") control on date inputs -- our own
+   "Today" button replaces it with a consistent, reliable action.
+   Non-standard pseudo-element, effective on Chromium; a no-op
+   elsewhere (e.g. iOS Safari, which doesn't render this control). */
+input[type='date']::-webkit-clear-button {
+  display: none;
+}
