@@ -49,20 +49,27 @@ export default function Login() {
           <p className="mt-1 text-sm text-indigo-200">Daily attendance, made simple.</p>
         </div>
         <div className="relative w-full max-w-xs rounded-2xl bg-white p-5 shadow-xl">
-          {signingIn && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-2xl bg-white/95">
-              <span className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-100 border-t-indigo-600" />
-              <p className="text-sm font-medium text-gray-600">Signing you in…</p>
-              <p className="px-4 text-xs text-gray-400">This can take a few seconds.</p>
-            </div>
-          )}
           {!online && (
             <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
               You're offline. Connect to the internet to sign in.
             </p>
           )}
           <p className="mb-3 text-sm font-medium text-gray-500">Sign in with your school Google account</p>
-          <div className="flex justify-center">
+
+          {signingIn && (
+            <div className="flex flex-col items-center gap-3 py-2">
+              <span className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-100 border-t-indigo-600" />
+              <p className="text-sm font-medium text-gray-600">Signing you in…</p>
+              <p className="px-4 text-xs text-gray-400">This can take a few seconds.</p>
+            </div>
+          )}
+
+          {/* Google's rendered button is a native element with its own
+              stacking priority that a translucent overlay can't cover, so
+              instead of overlaying it while signing in, it's hidden via
+              display:none (not unmounted, so renderSignInButton is never
+              called a second time on the same page load). */}
+          <div className={`flex justify-center ${signingIn ? 'hidden' : ''}`}>
             <div
               ref={(el) => {
                 if (el) renderSignInButton(el)
