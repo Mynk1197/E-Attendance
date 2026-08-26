@@ -29,6 +29,7 @@ export default function Holidays() {
   const [date, setDate] = useState(todayStr())
   const [remark, setRemark] = useState('')
   const [error, setError] = useState('')
+  const [loadError, setLoadError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -39,11 +40,12 @@ export default function Holidays() {
 
   async function load() {
     setLoading(true)
+    setLoadError('')
     try {
       const list = (await api.getHolidays(klass)) as Holiday[]
       setHolidays(list.sort((a, b) => (a.Date < b.Date ? 1 : -1)))
     } catch {
-      setError('Offline: cannot load holiday list.')
+      setLoadError('Failed to load holidays.')
     } finally {
       setLoading(false)
     }
@@ -83,6 +85,14 @@ export default function Holidays() {
   return (
     <div className="mx-auto max-w-md space-y-4 p-4">
       <h2 className="text-sm font-bold uppercase tracking-wide text-gray-400">Holidays &amp; remarks</h2>
+      {loadError && (
+        <div className="flex items-center justify-between rounded-xl bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700">
+          <span>{loadError}</span>
+          <button onClick={load} className="font-semibold underline">
+            Retry
+          </button>
+        </div>
+      )}
       {error && <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">{error}</p>}
 
       <fieldset disabled={submitting} className="space-y-2 rounded-2xl bg-white p-4 shadow-sm disabled:opacity-60">

@@ -42,6 +42,7 @@ export default function Report({ period }: { period: 'weekly' | 'monthly' }) {
   const [report, setReport] = useState<ReportData | null>(null)
   const [lastSynced, setLastSynced] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState(false)
 
   useEffect(() => {
     if (!klass) return
@@ -50,6 +51,7 @@ export default function Report({ period }: { period: 'weekly' | 'monthly' }) {
 
   async function load() {
     setLoading(true)
+    setFetchError(false)
     setReport(null)
     const cacheKey = `${klass}|${section}|${period}|${date}`
     const cached = await db.reportsCache.get(cacheKey)
@@ -64,7 +66,7 @@ export default function Report({ period }: { period: 'weekly' | 'monthly' }) {
       setLastSynced(fetchedAt)
       await db.reportsCache.put({ key: cacheKey, data: fresh, fetchedAt })
     } catch {
-      // offline: keep cached value
+      if (!cached) setFetchError(true)
     } finally {
       setLoading(false)
     }
@@ -101,7 +103,16 @@ export default function Report({ period }: { period: 'weekly' | 'monthly' }) {
         </div>
       )}
 
-      {!loading && !report && (
+      {!loading && !report && fetchError && (
+        <div className="flex items-center justify-between rounded-2xl bg-rose-50 p-4 text-sm font-medium text-rose-700 shadow-sm">
+          <span>Couldn't load this report.</span>
+          <button onClick={load} className="font-semibold underline">
+            Retry
+          </button>
+        </div>
+      )}
+
+      {!loading && !report && !fetchError && (
         <div className="rounded-2xl bg-white p-6 text-center text-sm text-gray-400 shadow-sm">
           No data yet{navigator.onLine ? '' : ' (offline)'}.
         </div>

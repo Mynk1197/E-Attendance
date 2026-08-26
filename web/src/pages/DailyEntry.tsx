@@ -41,6 +41,8 @@ export default function DailyEntry() {
   const [saving, setSaving] = useState(false)
   const [checkingDate, setCheckingDate] = useState(false)
   const [loadingStudents, setLoadingStudents] = useState(true)
+  const [dateCheckError, setDateCheckError] = useState(false)
+  const [studentsError, setStudentsError] = useState(false)
   const [status, setStatus] = useState('')
 
   useEffect(() => {
@@ -56,6 +58,7 @@ export default function DailyEntry() {
 
   async function checkDateState() {
     setCheckingDate(true)
+    setDateCheckError(false)
     setMarkAsHoliday(isSunday(date))
     setHolidayRemark(isSunday(date) ? 'Sunday' : '')
     setLockedHoliday(null)
@@ -66,42 +69,46 @@ export default function DailyEntry() {
     students.forEach((s) => (defaults[s.StudentID] = 'Y'))
     setMarks(defaults)
 
-    try {
-      let holidayFound = false
-      try {
-        const holidays = (await api.getHolidays(klass, date, date)) as Holiday[]
-        const holiday = holidays.find((h) => h.Date === date)
-        if (holiday) {
-          holidayFound = true
-          setLockedHoliday(holiday.Remark)
-          setMarkAsHoliday(true)
-          setHolidayRemark(holiday.Remark)
-        }
-      } catch {
-        // offline: fall back to Sunday-only detection
-      }
-      if (holidayFound) return
+    // These two checks are independent, so run them in parallel instead
+    // of one after another -- halves the wait on a slow connection.
+    const [holidaysResult, attendanceResult] = await Promise.allSettled([
+      api.getHolidays(klass, date, date),
+      api.getAttendance(klass, section, date),
+    ])
 
-      try {
-        const existing = (await api.getAttendance(klass, section, date)) as AttendanceRecord[]
-        if (existing.length > 0) {
-          setAlreadySaved(true)
-          const existingMarks: Record<string, 'Y' | 'N'> = {}
-          existing.forEach((r) => {
-            if (r.Present === 'Y' || r.Present === 'N') existingMarks[r.StudentID] = r.Present
-          })
-          setMarks(existingMarks)
-        }
-      } catch {
-        // offline: cannot verify, allow entry
+    let holidayFound = false
+    if (holidaysResult.status === 'fulfilled') {
+      const holiday = (holidaysResult.value as Holiday[]).find((h) => h.Date === date)
+      if (holiday) {
+        holidayFound = true
+        setLockedHoliday(holiday.Remark)
+        setMarkAsHoliday(true)
+        setHolidayRemark(holiday.Remark)
       }
-    } finally {
-      setCheckingDate(false)
     }
+
+    if (!holidayFound && attendanceResult.status === 'fulfilled') {
+      const existing = attendanceResult.value as AttendanceRecord[]
+      if (existing.length > 0) {
+        setAlreadySaved(true)
+        const existingMarks: Record<string, 'Y' | 'N'> = {}
+        existing.forEach((r) => {
+          if (r.Present === 'Y' || r.Present === 'N') existingMarks[r.StudentID] = r.Present
+        })
+        setMarks(existingMarks)
+      }
+    }
+
+    if (holidaysResult.status === 'rejected' || attendanceResult.status === 'rejected') {
+      setDateCheckError(true)
+    }
+
+    setCheckingDate(false)
   }
 
   async function loadStudents() {
     setLoadingStudents(true)
+    setStudentsError(false)
     const cached = await db.students.where('Class').equals(klass).toArray()
     setStudents(sortByName(cached.filter((s) => !section || s.Section === section)))
     try {
@@ -112,7 +119,7 @@ export default function DailyEntry() {
       fresh.forEach((s) => (initial[s.StudentID] = 'Y'))
       setMarks((prev) => ({ ...initial, ...prev }))
     } catch {
-      // offline: rely on cache
+      setStudentsError(true)
     } finally {
       setLoadingStudents(false)
     }
@@ -195,6 +202,22 @@ export default function DailyEntry() {
 
       {!pageLoading && (
         <>
+          {studentsError && (
+            <div className="flex items-center justify-between rounded-2xl bg-rose-50 p-4 text-sm font-medium text-rose-700 shadow-sm">
+              <span>Couldn't load the roster.</span>
+              <button onClick={loadStudents} className="font-semibold underline">
+                Retry
+              </button>
+            </div>
+          )}
+          {dateCheckError && (
+            <div className="flex items-center justify-between rounded-2xl bg-rose-50 p-4 text-sm font-medium text-rose-700 shadow-sm">
+              <span>Couldn't fully check this date.</span>
+              <button onClick={checkDateState} className="font-semibold underline">
+                Retry
+              </button>
+            </div>
+          )}
           {lockedHoliday && (
             <div className="rounded-2xl bg-amber-50 p-4 text-sm font-medium text-amber-700 shadow-sm">
               This day is marked as a holiday: {lockedHoliday}. Attendance can't be recorded for it.

@@ -38,6 +38,7 @@ export default function Students() {
   const [form, setForm] = useState(emptyForm)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [error, setError] = useState('')
+  const [loadError, setLoadError] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -48,6 +49,7 @@ export default function Students() {
 
   async function load() {
     setLoading(true)
+    setLoadError('')
     try {
       const fresh = (await api.getStudents(klass, section)) as CachedStudent[]
       setStudents(fresh)
@@ -55,7 +57,7 @@ export default function Students() {
     } catch {
       const cached = await db.students.where('Class').equals(klass).toArray()
       setStudents(cached.filter((s) => !section || s.Section === section))
-      setError('Offline: showing cached roster. Add/edit requires internet.')
+      setLoadError('Failed to load. Showing cached roster if available.')
     } finally {
       setLoading(false)
     }
@@ -119,6 +121,14 @@ export default function Students() {
         </button>
       </div>
 
+      {loadError && (
+        <div className="flex items-center justify-between rounded-xl bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700">
+          <span>{loadError}</span>
+          <button onClick={load} className="font-semibold underline">
+            Retry
+          </button>
+        </div>
+      )}
       {error && <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">{error}</p>}
 
       {showForm && (
