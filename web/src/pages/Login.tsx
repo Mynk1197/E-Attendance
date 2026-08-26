@@ -18,7 +18,7 @@ function useOnlineStatus() {
 }
 
 export default function Login() {
-  const { renderSignInButton, loginError } = useAuth()
+  const { renderSignInButton, loginError, signingIn } = useAuth()
   const online = useOnlineStatus()
 
   return (
@@ -48,7 +48,14 @@ export default function Login() {
           <h1 className="text-2xl font-extrabold text-white">E-Attendance</h1>
           <p className="mt-1 text-sm text-indigo-200">Daily attendance, made simple.</p>
         </div>
-        <div className="w-full max-w-xs rounded-2xl bg-white p-5 shadow-xl">
+        <div className="relative w-full max-w-xs rounded-2xl bg-white p-5 shadow-xl">
+          {signingIn && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-2xl bg-white/95">
+              <span className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-100 border-t-indigo-600" />
+              <p className="text-sm font-medium text-gray-600">Signing you in…</p>
+              <p className="px-4 text-xs text-gray-400">This can take a few seconds.</p>
+            </div>
+          )}
           {!online && (
             <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
               You're offline. Connect to the internet to sign in.

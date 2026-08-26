@@ -6,6 +6,7 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string
 interface AuthState {
   teacher: Teacher | null
   loading: boolean
+  signingIn: boolean
   loginError: string | null
   signOut: () => void
   renderSignInButton: (el: HTMLElement) => void
@@ -14,6 +15,7 @@ interface AuthState {
 const AuthContext = createContext<AuthState>({
   teacher: null,
   loading: true,
+  signingIn: false,
   loginError: null,
   signOut: () => {},
   renderSignInButton: () => {},
@@ -40,6 +42,7 @@ declare global {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [teacher, setTeacher] = useState<Teacher | null>(null)
   const [loading, setLoading] = useState(true)
+  const [signingIn, setSigningIn] = useState(false)
   const [loginError, setLoginError] = useState<string | null>(null)
   const initializedRef = useRef(false)
 
@@ -60,6 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         client_id: GOOGLE_CLIENT_ID,
         callback: async (response: { credential: string }) => {
           setLoginError(null)
+          setSigningIn(true)
           try {
             const result = await api.login(response.credential)
             localStorage.setItem('teacher', JSON.stringify(result))
@@ -69,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             localStorage.removeItem('idToken')
             setLoginError('Sign-in failed: this Google account is not an authorized teacher account.')
           } finally {
-            setLoading(false)
+            setSigningIn(false)
           }
         },
       })
@@ -96,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ teacher, loading, loginError, signOut, renderSignInButton }}>
+    <AuthContext.Provider value={{ teacher, loading, signingIn, loginError, signOut, renderSignInButton }}>
       {children}
     </AuthContext.Provider>
   )
