@@ -70,6 +70,8 @@ export const api = {
   ) => call('saveAttendance', { class: klass, section, date, records: JSON.stringify(records) }),
   getAttendance: (klass: string, section: string, date: string) =>
     call('getAttendance', { class: klass, section, date }),
+  getDailyEntryData: (klass: string, section: string, date: string) =>
+    call('getDailyEntryData', { class: klass, section, date }),
   getReport: (klass: string, section: string, period: 'daily' | 'weekly' | 'monthly', date: string) =>
     call('getReport', { class: klass, section, period, date }),
   getHolidays: (klass: string, dateFrom = '', dateTo = '') =>

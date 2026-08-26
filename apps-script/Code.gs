@@ -49,6 +49,9 @@ function handle(e) {
       case 'getAttendance':
         result = getAttendance(params);
         break;
+      case 'getDailyEntryData':
+        result = getDailyEntryData(params);
+        break;
       case 'getReport':
         result = getReport(params);
         break;
@@ -281,6 +284,30 @@ function getAttendance(params) {
     if (params.section && String(a.Section) !== String(params.section)) return false;
     return true;
   });
+}
+
+// Combines what the Daily page needs on load (roster, whether the date is
+// a holiday, and any existing attendance) into a single call instead of
+// three separate ones fired together -- those were piling up as
+// concurrent executions against Apps Script's per-script concurrency
+// limit, which is what was actually causing the slow/contended loads.
+function getDailyEntryData(params) {
+  var klass = params.class;
+  var section = params.section || '';
+  var date = params.date;
+
+  var students = getStudents({ class: klass, section: section });
+  var holidays = getHolidays({ class: klass, dateFrom: date, dateTo: date });
+  var holiday = null;
+  for (var i = 0; i < holidays.length; i++) {
+    if (String(holidays[i].Date) === String(date)) {
+      holiday = holidays[i];
+      break;
+    }
+  }
+  var attendance = getAttendance({ class: klass, section: section, date: date });
+
+  return { students: students, holiday: holiday, attendance: attendance };
 }
 
 // ---------- Reports ----------
