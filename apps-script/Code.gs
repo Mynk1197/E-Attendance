@@ -171,6 +171,18 @@ function getStudents(params) {
   });
 }
 
+// Includes removed (Active = N) students, used for report calculations
+// where a past attendance row needs to resolve to a student's
+// gender/category even after they've since been removed from the roster.
+function getAllStudentsForClass(klass, section) {
+  var all = sheetToObjects(SHEET_STUDENTS, STUDENTS_HEADERS);
+  return all.filter(function (s) {
+    if (String(s.Class) !== String(klass)) return false;
+    if (section && String(s.Section) !== String(section)) return false;
+    return true;
+  });
+}
+
 function addStudent(params) {
   var s = JSON.parse(params.student);
   s.StudentID = 'S' + new Date().getTime() + Math.floor(Math.random() * 1000);
@@ -299,9 +311,15 @@ function getReport(params) {
   var range = dateRangeForPeriod(params.period, params.date);
 
   var students = getStudents({ class: klass, section: section });
-  var studentById = {};
-  students.forEach(function (s) { studentById[s.StudentID] = s; });
   var totalStrength = students.length;
+
+  // Attendance rows reference students by ID regardless of whether they're
+  // still active, so historical days need to resolve a removed student's
+  // gender/category too -- otherwise their past present/absent mark either
+  // gets silently dropped or miscounted once they're no longer active.
+  var allStudentsEverInClass = getAllStudentsForClass(klass, section);
+  var studentById = {};
+  allStudentsEverInClass.forEach(function (s) { studentById[s.StudentID] = s; });
 
   var holidays = sheetToObjects(SHEET_HOLIDAYS, HOLIDAYS_HEADERS).filter(function (h) {
     var hd = new Date(h.Date + 'T00:00:00');
@@ -332,7 +350,7 @@ function getReport(params) {
     // than treating the whole class as absent.
     var summary = dayRecords.length === 0
       ? { boysPresent: 0, girlsPresent: 0, totalPresent: 0, totalAbsent: 0, scPresent: 0, stPresent: 0, obcPresent: 0, genPresent: 0 }
-      : summarizeDay(dayRecords, studentById, totalStrength);
+      : summarizeDay(dayRecords, studentById);
     summary.date = ds;
     summary.holiday = false;
     days.push(summary);
@@ -355,11 +373,20 @@ function getReport(params) {
   return { period: params.period, class: klass, section: section, days: days, totals: totals };
 }
 
-function summarizeDay(dayRecords, studentById, totalStrength) {
+function summarizeDay(dayRecords, studentById) {
+  // Present/absent are counted directly from what was actually recorded
+  // that day, not derived from the current roster size -- deriving from
+  // roster size breaks as soon as a student is added or removed after
+  // the fact, since it changes every past day's numbers retroactively.
   var s = { boysPresent: 0, girlsPresent: 0, totalPresent: 0, totalAbsent: 0, scPresent: 0, stPresent: 0, obcPresent: 0, genPresent: 0 };
   dayRecords.forEach(function (r) {
     var student = studentById[r.StudentID];
-    if (!student || String(r.Present) !== 'Y') return;
+    if (!student) return;
+    if (String(r.Present) === 'N') {
+      s.totalAbsent++;
+      return;
+    }
+    if (String(r.Present) !== 'Y') return;
     s.totalPresent++;
     if (String(student.Gender) === 'M') s.boysPresent++;
     if (String(student.Gender) === 'F') s.girlsPresent++;
@@ -369,7 +396,6 @@ function summarizeDay(dayRecords, studentById, totalStrength) {
     else if (cat === 'OBC') s.obcPresent++;
     else s.genPresent++;
   });
-  s.totalAbsent = totalStrength - s.totalPresent;
   return s;
 }
 
